@@ -1,7 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('worklog.db');
 
-// Tworzenie tabeli, jeśli nie istnieje
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS work_logs (
@@ -26,10 +25,11 @@ function getAllLogs() {
 
 function addLog(log) {
   return new Promise((resolve, reject) => {
+    const breakValue = log.break_minutes || 0;
     db.run(
       `INSERT INTO work_logs (date, start_time, end_time, break_minutes, notes)
        VALUES (?, ?, ?, ?, ?)`,
-      [log.date, log.start_time, log.end_time, log.break_minutes, log.notes],
+      [log.date, log.start_time, log.end_time, breakValue, log.notes],
       function (err) {
         if (err) reject(err);
         else resolve(this.lastID);
@@ -40,11 +40,12 @@ function addLog(log) {
 
 function updateLog(log) {
   return new Promise((resolve, reject) => {
+    const breakValue = log.break_minutes || 0;
     db.run(
       `UPDATE work_logs
        SET date = ?, start_time = ?, end_time = ?, break_minutes = ?, notes = ?
        WHERE id = ?`,
-      [log.date, log.start_time, log.end_time, log.break_minutes, log.notes, log.id],
+      [log.date, log.start_time, log.end_time, breakValue, log.notes, log.id],
       function (err) {
         if (err) reject(err);
         else resolve();
@@ -53,4 +54,13 @@ function updateLog(log) {
   });
 }
 
-module.exports = { getAllLogs, addLog, updateLog };
+function deleteLog(id) {
+  return new Promise((resolve, reject) => {
+    db.run(`DELETE FROM work_logs WHERE id = ?`, [id], function (err) {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
+
+module.exports = { getAllLogs, addLog, updateLog, deleteLog };

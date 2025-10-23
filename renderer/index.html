@@ -4,11 +4,50 @@
   <meta charset="UTF-8">
   <title>Rejestr pracy</title>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    input, textarea, button { margin: 5px; padding: 5px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px; }
-    th { background-color: #f3f3f3; }
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+      font-size: 0.8rem; /* zmniejszona czcionka o ok. 75% */
+    }
+    input, button {
+      margin: 5px;
+      padding: 5px 7px;
+      font-size: 0.8rem;
+      height: 30px;
+      vertical-align: middle;
+    }
+    table, td, th {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 0.8rem;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: center;
+    }
+    th {
+      background-color: #f3f3f3;
+    }
+    button {
+      cursor: pointer;
+    }
+    .month-summary-row {
+      background-color: #e8f0ff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .month-summary-row:hover {
+      background-color: #d5e2ff;
+    }
+    .month-details {
+      display: none; /* domyślnie zwinięte */
+    }
   </style>
 </head>
 <body>
@@ -18,12 +57,11 @@
     <input type="date" id="date" required />
     <input type="time" id="start_time" required />
     <input type="time" id="end_time" required />
-    <input type="number" id="break_minutes" placeholder="Przerwa (min)" />
-    <textarea id="notes" placeholder="Notatka..."></textarea>
-    <button type="submit">Zapisz</button>
+    <input type="number" id="break_minutes" placeholder="Przerwa (min)" min="0" />
+    <input type="text" id="notes" placeholder="Notatka..." />
+    <button type="submit">Dodaj</button>
   </form>
 
-  <h3>Historia wpisów</h3>
   <table id="logsTable">
     <thead>
       <tr>
@@ -31,8 +69,11 @@
         <th>Start</th>
         <th>Koniec</th>
         <th>Przerwa</th>
+        <th>Godziny netto</th>
+        <th>Zaokr.</th>
         <th>Notatka</th>
         <th>Edycja</th>
+        <th>Usuń</th>
       </tr>
     </thead>
     <tbody></tbody>
