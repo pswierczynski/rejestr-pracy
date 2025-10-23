@@ -1,18 +1,13 @@
 {
   "name": "rejestr-pracy",
   "version": "1.0.0",
-  "description": "System rejestrowania pracy",
-  "main": "index.js",
+  "description": "Prosty rejestr godzin pracy w Electronie i SQLite",
+  "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "electron ."
   },
-  "repository": {
-    "type": "git",
-    "url": "rejestr-pracy"
-  },
-  "author": "Przemek",
-  "license": "MIT",
-  "devDependencies": {
-    "electron": "^38.4.0"
+  "dependencies": {
+    "electron": "^38.4.0",
+    "sqlite3": "^5.1.7"
   }
 }

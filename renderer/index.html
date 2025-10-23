@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Rejestr pracy</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    input, textarea, button { margin: 5px; padding: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background-color: #f3f3f3; }
+  </style>
+</head>
+<body>
+  <h2>🕓 Rejestr pracy</h2>
+
+  <form id="logForm">
+    <input type="date" id="date" required />
+    <input type="time" id="start_time" required />
+    <input type="time" id="end_time" required />
+    <input type="number" id="break_minutes" placeholder="Przerwa (min)" />
+    <textarea id="notes" placeholder="Notatka..."></textarea>
+    <button type="submit">Zapisz</button>
+  </form>
+
+  <h3>Historia wpisów</h3>
+  <table id="logsTable">
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Start</th>
+        <th>Koniec</th>
+        <th>Przerwa</th>
+        <th>Notatka</th>
+        <th>Edycja</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
