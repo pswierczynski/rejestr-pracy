@@ -1,200 +1,191 @@
-const form = document.getElementById('logForm');
-const tableBody = document.querySelector('#logsTable tbody');
+document.addEventListener('DOMContentLoaded', async () => {
+  const form = document.getElementById('logForm');
+  const cancelBtn = document.getElementById('cancelEdit');
+  const monthsContainer = document.getElementById('monthsContainer');
+  let editingId = null;
 
-const MONTHS_PL = [
-  'STYCZEŃ', 'LUTY', 'MARZEC', 'KWIECIEŃ', 'MAJ', 'CZERWIEC',
-  'LIPIEC', 'SIERPIEŃ', 'WRZESIEŃ', 'PAŹDZIERNIK', 'LISTOPAD', 'GRUDZIEŃ'
-];
+  async function loadLogs() {
+    const logs = await window.api.getLogs();
+    renderMonths(logs);
+  }
 
-function calculateHours(start, end, breakMinutes) {
-  if (!start || !end) return 0;
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
+  function groupByMonth(logs) {
+    const months = {};
 
-  let startMinutes = sh * 60 + sm;
-  let endMinutes = eh * 60 + em;
-  if (endMinutes < startMinutes) endMinutes += 24 * 60;
+    logs.forEach(log => {
+      const date = new Date(log.date);
+      let periodEnd = new Date(date);
+      if (date.getDate() < 23) periodEnd.setMonth(date.getMonth());
+      else periodEnd.setMonth(date.getMonth() + 1);
 
-  let total = (endMinutes - startMinutes - (breakMinutes || 0)) / 60;
-  return Math.max(0, total);
-}
+      const monthName = periodEnd.toLocaleString('pl-PL', { month: 'long' }).toUpperCase();
+      const key = `${monthName} ${periodEnd.getFullYear()}`;
+      if (!months[key]) months[key] = [];
+      months[key].push(log);
+    });
 
-function roundToQuarter(hours) {
-  return (Math.round(hours * 4) / 4).toFixed(2);
-}
+    // najnowsze miesiące pierwsze
+    return Object.fromEntries(
+      Object.entries(months).sort((a, b) => {
+        const [ma, ya] = a[0].split(' ');
+        const [mb, yb] = b[0].split(' ');
+        const da = new Date(`${ya}-${ma}-01`);
+        const db = new Date(`${yb}-${mb}-01`);
+        return db - da;
+      })
+    );
+  }
 
-function getPeriodLabel(dateStr) {
-  const d = new Date(dateStr);
-  let year = d.getFullYear();
-  let month = d.getMonth() + 1;
+  function calculateHours(start, end, breakMin) {
+    const s = new Date(`1970-01-01T${start}:00`);
+    const e = new Date(`1970-01-01T${end}:00`);
+    let diff = (e - s) / 1000 / 3600 - (breakMin || 0) / 60;
+    return Math.max(diff, 0);
+  }
 
-  if (d.getDate() < 23) {
-    month -= 1;
-    if (month < 1) {
-      month = 12;
-      year--;
+  function roundQuarter(h) {
+    const quarters = [0, 0.25, 0.5, 0.75, 1];
+    const nearest = quarters.reduce((prev, curr) =>
+      Math.abs(curr - (h % 1)) < Math.abs(prev - (h % 1)) ? curr : prev
+    );
+    return Math.floor(h) + nearest;
+  }
+
+  function renderMonths(logs) {
+    monthsContainer.innerHTML = '';
+    const grouped = groupByMonth(logs);
+    const monthKeys = Object.keys(grouped);
+
+    if (monthKeys.length === 0) {
+      monthsContainer.innerHTML = '<p style="margin:20px;">Brak danych</p>';
+      return;
     }
-  }
 
-  const nextMonth = month === 12 ? 1 : month + 1;
-  const nextYear = month === 12 ? year + 1 : year;
+    monthKeys.forEach((monthKey, idx) => {
+      const monthLogs = grouped[monthKey];
+      const monthDiv = document.createElement('div');
+      monthDiv.classList.add('month-block');
 
-  const monthName = MONTHS_PL[nextMonth - 1];
-  return `${monthName} ${nextYear}`;
-}
+      let total = 0;
+      monthLogs.forEach(l => total += calculateHours(l.start_time, l.end_time, l.break_minutes || 0));
+      const roundedTotal = roundQuarter(total);
 
-const monthRates = {}; // zapamiętane stawki godzinowe dla miesięcy
-
-let expandedPeriod = null; // kontrola tylko jednego rozwiniętego miesiąca
-
-async function loadLogs() {
-  const logs = await window.api.getLogs();
-  tableBody.innerHTML = '';
-
-  const grouped = {};
-  logs.forEach(log => {
-    const label = getPeriodLabel(log.date);
-    if (!grouped[label]) grouped[label] = [];
-    grouped[label].push(log);
-  });
-
-  // sortowanie miesięcy po dacie (od najstarszego do najnowszego)
-  const periods = Object.keys(grouped).sort((a, b) => {
-    const [ma, ya] = a.split(' ');
-    const [mb, yb] = b.split(' ');
-    const indexA = MONTHS_PL.indexOf(ma);
-    const indexB = MONTHS_PL.indexOf(mb);
-    return new Date(ya, indexA) - new Date(yb, indexB);
-  });
-
-  // ostatni miesiąc automatycznie rozwinięty
-  const lastPeriod = periods[periods.length - 1];
-  expandedPeriod = expandedPeriod || lastPeriod;
-
-  for (const period of periods) {
-    const entries = grouped[period];
-    let totalRounded = 0;
-    const rate = monthRates[period] ?? 41;
-
-    entries.forEach(log => {
-      const breakVal = parseInt(log.break_minutes || 0);
-      const hours = calculateHours(log.start_time, log.end_time, breakVal);
-      const rounded = parseFloat(roundToQuarter(hours));
-      totalRounded += rounded;
-    });
-
-    const totalRate = (totalRounded * rate).toFixed(2);
-
-    // nagłówek miesiąca
-    const summaryRow = document.createElement('tr');
-    summaryRow.className = 'month-summary-row';
-    summaryRow.innerHTML = `
-      <td colspan="9" style="width:100%;">
-        <span>${period}</span>
-        <span style="float:right;">
-          <b>${totalRounded.toFixed(2)} godz.</b> — ${totalRate} zł
-          <button style="margin-left:10px;font-size:0.7rem;">${period === expandedPeriod ? 'Zwiń' : 'Rozwiń'}</button>
-        </span>
-      </td>
-    `;
-    tableBody.appendChild(summaryRow);
-
-    // szczegóły
-    const detailsContainer = document.createElement('tbody');
-    detailsContainer.className = 'month-details';
-    detailsContainer.style.display = period === expandedPeriod ? 'table-row-group' : 'none';
-    detailsContainer.style.width = '100%';
-
-    entries.forEach(log => {
-      const breakVal = parseInt(log.break_minutes || 0);
-      const hours = calculateHours(log.start_time, log.end_time, breakVal);
-      const rounded = parseFloat(roundToQuarter(hours));
-      const note = log.notes && log.notes.trim() !== '' ? log.notes : 'Brak';
-
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${log.date}</td>
-        <td>${log.start_time}</td>
-        <td>${log.end_time}</td>
-        <td>${breakVal}</td>
-        <td>${hours.toFixed(2)}</td>
-        <td>${rounded.toFixed(2)}</td>
-        <td>${note}</td>
-        <td><button class="edit" data-id="${log.id}">✏️</button></td>
-        <td><button class="delete" data-id="${log.id}">🗑️</button></td>
+      monthDiv.innerHTML = `
+        <div class="month-summary-row">
+          <div>${monthKey}</div>
+          <div>${roundedTotal.toFixed(2)} godz. | ${(roundedTotal * 41).toFixed(2)} zł</div>
+        </div>
+        <div class="month-details" style="display:${idx === 0 ? 'block' : 'none'};">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Start</th>
+                <th>Koniec</th>
+                <th>Przerwa (min)</th>
+                <th>Godziny</th>
+                <th>Zaokr.</th>
+                <th>Notatka</th>
+                <th>Akcje</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${monthLogs.map(l => {
+                const hrs = calculateHours(l.start_time, l.end_time, l.break_minutes || 0);
+                const r = roundQuarter(hrs);
+                return `
+                  <tr data-id="${l.id}">
+                    <td>${l.date}</td>
+                    <td>${l.start_time}</td>
+                    <td>${l.end_time}</td>
+                    <td>${l.break_minutes || 0}</td>
+                    <td>${hrs.toFixed(2)}</td>
+                    <td>${r.toFixed(2)}</td>
+                    <td>${l.notes || 'Brak'}</td>
+                    <td>
+                      <button class="edit-btn" data-id="${l.id}">Edytuj</button>
+                      <button class="delete-btn" data-id="${l.id}">Usuń</button>
+                    </td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
       `;
-      detailsContainer.appendChild(row);
+
+      monthsContainer.appendChild(monthDiv);
+
+      const summaryRow = monthDiv.querySelector('.month-summary-row');
+      const details = monthDiv.querySelector('.month-details');
+
+      summaryRow.addEventListener('click', () => {
+        document.querySelectorAll('.month-details').forEach(el => el.style.display = 'none');
+        details.style.display = 'block';
+      });
+
+      details.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          const id = e.target.dataset.id;
+          await window.api.deleteLog(Number(id));
+          loadLogs();
+        });
+      });
+
+      details.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          const id = Number(e.target.dataset.id);
+          const log = logs.find(l => l.id === id);
+          if (!log) return;
+
+          document.getElementById('date').value = log.date;
+          document.getElementById('start_time').value = log.start_time;
+          document.getElementById('end_time').value = log.end_time;
+          document.getElementById('break_minutes').value = log.break_minutes || 0;
+          document.getElementById('notes').value = log.notes || 'Brak';
+          editingId = id;
+
+          form.querySelector('button').textContent = 'Zapisz zmiany';
+          form.querySelector('button').style.backgroundColor = '#28a745';
+          cancelBtn.style.display = 'inline-block';
+        });
+      });
     });
-
-    tableBody.appendChild(detailsContainer);
-
-    // logika rozwijania/zwijania
-    const toggleBtn = summaryRow.querySelector('button');
-    toggleBtn.onclick = () => {
-      if (expandedPeriod === period) {
-        expandedPeriod = null;
-        detailsContainer.style.display = 'none';
-        toggleBtn.textContent = 'Rozwiń';
-      } else {
-        // zwijamy poprzedni miesiąc
-        document.querySelectorAll('.month-details').forEach(el => (el.style.display = 'none'));
-        document.querySelectorAll('.month-summary-row button').forEach(el => (el.textContent = 'Rozwiń'));
-
-        expandedPeriod = period;
-        detailsContainer.style.display = 'table-row-group';
-        toggleBtn.textContent = 'Zwiń';
-      }
-    };
   }
 
-  // Edycja
-  document.querySelectorAll('.edit').forEach(btn => {
-    btn.onclick = async () => {
-      const logs = await window.api.getLogs();
-      const log = logs.find(l => l.id == btn.dataset.id);
-      if (log) {
-        document.getElementById('date').value = log.date;
-        document.getElementById('start_time').value = log.start_time;
-        document.getElementById('end_time').value = log.end_time;
-        document.getElementById('break_minutes').value = log.break_minutes || 0;
-        document.getElementById('notes').value = log.notes;
-        form.dataset.editId = log.id;
-      }
+  // Zapis / Edycja
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const log = {
+      date: document.getElementById('date').value,
+      start_time: document.getElementById('start_time').value,
+      end_time: document.getElementById('end_time').value,
+      break_minutes: parseInt(document.getElementById('break_minutes').value) || 0,
+      notes: document.getElementById('notes').value.trim() || 'Brak'
     };
+
+    if (editingId) {
+      log.id = editingId;
+      await window.api.updateLog(log);
+      editingId = null;
+      cancelBtn.style.display = 'none';
+      form.querySelector('button').textContent = 'Dodaj';
+      form.querySelector('button').style.backgroundColor = '#007bff';
+    } else {
+      await window.api.addLog(log);
+    }
+
+    form.reset();
+    loadLogs();
   });
 
-  // Usuwanie
-  document.querySelectorAll('.delete').forEach(btn => {
-    btn.onclick = async () => {
-      if (confirm('Czy na pewno chcesz usunąć ten wpis?')) {
-        await window.api.deleteLog(btn.dataset.id);
-        loadLogs();
-      }
-    };
+  // Anuluj edycję
+  cancelBtn.addEventListener('click', () => {
+    form.reset();
+    editingId = null;
+    cancelBtn.style.display = 'none';
+    form.querySelector('button').textContent = 'Dodaj';
+    form.querySelector('button').style.backgroundColor = '#007bff';
   });
-}
 
-form.onsubmit = async (e) => {
-  e.preventDefault();
-
-  const log = {
-    date: date.value,
-    start_time: start_time.value,
-    end_time: end_time.value,
-    break_minutes: break_minutes.value || 0,
-    notes: notes.value && notes.value.trim() !== '' ? notes.value : 'Brak'
-  };
-
-  if (form.dataset.editId) {
-    log.id = form.dataset.editId;
-    await window.api.updateLog(log);
-    form.dataset.editId = '';
-  } else {
-    await window.api.addLog(log);
-  }
-
-  form.reset();
-  loadLogs();
-};
-
-loadLogs();
+  await loadLogs();
+});

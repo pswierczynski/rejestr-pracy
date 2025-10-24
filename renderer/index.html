@@ -1,55 +1,145 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Rejestr pracy</title>
   <style>
-    body {
-      font-family: sans-serif;
-      margin: 20px;
-      font-size: 0.8rem; /* zmniejszona czcionka o ok. 75% */
-    }
-    input, button {
-      margin: 5px;
-      padding: 5px 7px;
-      font-size: 0.8rem;
-      height: 30px;
-      vertical-align: middle;
-    }
-    table, td, th {
+    html, body {
+      margin: 0;
+      padding: 0;
       width: 100%;
+      height: 100%;
+      overflow: auto;
+      font-family: Arial, sans-serif;
+      font-size: 0.8rem;
+      background-color: #fafafa;
+    }
+
+    h2 {
+      margin: 15px 25px;
+      font-size: 1.1rem;
+    }
+
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 25px 20px;
+    }
+
+    input, button {
+      padding: 6px 8px;
+      font-size: 0.8rem;
+      height: 34px;
       box-sizing: border-box;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      font-size: 0.8rem;
+
+    input[type="text"] {
+      flex: 1;
+      min-width: 200px;
     }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 6px;
-      text-align: center;
-    }
-    th {
-      background-color: #f3f3f3;
-    }
+
     button {
       cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      transition: background-color 0.2s;
     }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
     .month-summary-row {
       background-color: #e8f0ff;
       font-weight: bold;
       cursor: pointer;
+      padding: 8px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
     }
+
     .month-summary-row:hover {
       background-color: #d5e2ff;
     }
+
     .month-details {
-      display: none; /* domyślnie zwinięte */
+      display: none;
+      padding: 10px 25px 20px;
+      background-color: #fff;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      text-align: center;
+      padding: 6px;
+      word-wrap: break-word;
+    }
+
+    th {
+      background-color: #f3f3f3;
+    }
+
+    .month-summary {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 15px;
+      margin-top: 10px;
+    }
+
+    .month-summary label {
+      font-weight: bold;
+    }
+
+    .rate-input {
+      width: 60px;
+      text-align: right;
+    }
+
+    .delete-btn {
+      background-color: #dc3545;
+      border: none;
+      color: white;
+      border-radius: 3px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .delete-btn:hover {
+      background-color: #b02a37;
+    }
+
+    .edit-btn {
+      background-color: #ffc107;
+      border: none;
+      color: #000;
+      border-radius: 3px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .edit-btn:hover {
+      background-color: #d39e00;
     }
   </style>
 </head>
+
 <body>
   <h2>🕓 Rejestr pracy</h2>
 
@@ -60,24 +150,10 @@
     <input type="number" id="break_minutes" placeholder="Przerwa (min)" min="0" />
     <input type="text" id="notes" placeholder="Notatka..." />
     <button type="submit">Dodaj</button>
+    <button type="button" id="cancelEdit" style="display:none;background-color:#dc3545;">Anuluj edycję</button>
   </form>
 
-  <table id="logsTable">
-    <thead>
-      <tr>
-        <th>Data</th>
-        <th>Start</th>
-        <th>Koniec</th>
-        <th>Przerwa</th>
-        <th>Godziny netto</th>
-        <th>Zaokr.</th>
-        <th>Notatka</th>
-        <th>Edycja</th>
-        <th>Usuń</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div id="monthsContainer"></div>
 
   <script src="renderer.js"></script>
 </body>
